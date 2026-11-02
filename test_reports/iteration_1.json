@@ -1,0 +1,37 @@
+{
+  "summary": "Full E2E test of Habit Circle. Backend: 16/16 pytest pass (auth signup/signin/me/cookie, dup email 400, bad pw 401, unauth 401, habits create/defaults, mine-only-own, community-only-shared, private 404 for other user on GET/comments/ticks, tick/untick/idempotent, streak logic, bad dates 400, non-owner tick 403, comments with author name, empty comment 422/400). Frontend: all requested flows checked with Playwright. Sign up A/B lands on /habits; sign out goes to /signin; sign in lands on /habits; signed-out visits to protected pages redirect to /signin; share checkbox unticked by default and reset after add; Shared/Private tags show; 7 checkboxes with local dates, today first; tick/untick updates Days done and Current streak and persists after reload; Community shows only shared habits with owner, when text and Days done; B's checkboxes are disabled; B's comment shows to A with B's name; B opening A's private habit URL sees 'Habit not found'; top nav and sidebar links work; sidebar hidden on mobile. One minor UX issue: the Sonner toast at top-right covers the header Sign out button (and the whole header on mobile) for a few seconds, so clicks are blocked.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/habits/{id}/ticks", "issue": "Accepts future dates up to 8 days ahead (abs() check). Not reachable from the UI."},
+      {"endpoint": "CORS", "issue": "allow_origin_regex='.*' with allow_credentials=True reflects any origin. Explicit origins are recommended."},
+      {"endpoint": "POST /api/auth/signin", "issue": "No brute-force lockout (playbook item). The user asked to keep it simple, so this is informational only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Toaster (App.js)", "issue": "The top-right 'Habit added' toast sits over the header Sign out button, so clicks are blocked for about 4s. On mobile it covers the whole header nav.", "selector": "[data-testid='nav-signout']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Habit page", "issues": ["The 'My habits' nav link stays active on the habit page, including when viewing another user's shared habit opened from Community (NavLink without end). Cosmetic."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_habit_tracker.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Move the Toaster to bottom-right (or offset it) so it does not cover the header Sign out button and nav",
+    "Optional: limit the tick date range to [today-8, today+1] instead of abs() <= 8"
+  ],
+  "critical_code_review_comments": [
+    "server.py CORS reflects any origin with credentials enabled. Use explicit origins from env.",
+    "HabitPage does not reset habit/error state when the id param changes. Minor.",
+    "The bcrypt hash uses gensalt, so it has the $2b$ format. The httpOnly cookie is set with Secure and SameSite=None (verified)."
+  ],
+  "updated_files": ["/app/backend/tests/test_habit_tracker.py"],
+  "success_rate": {"backend": "100%", "frontend": "100% of requested flows (1 minor UX issue)"},
+  "test_credentials": "No seeded users. Tests create users test_<hex>@example.com / ui_a_<hex>@example.com, password pass123",
+  "seed_data_creation": "Test users/habits/comments created with TEST_ / UI prefixes",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Run: REACT_APP_BACKEND_URL=... pytest /app/backend/tests/test_habit_tracker.py. Radix checkboxes expose data-state=checked/unchecked. The browser date matched the server date in testing."
+}
